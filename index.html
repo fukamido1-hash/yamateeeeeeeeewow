@@ -3,20 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>山手線すごろく | 完全修正版</title>
+    <title>山手線すごろく | 電車1枚版</title>
     <style>
+        /* --- CSSエリア --- */
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
             text-align: center;
             margin: 0;
+            overflow-x: hidden;
             background: linear-gradient(135deg, #1e1f29, #2e3250);
             color: #fff;
-            overflow-x: hidden;
         }
         h1 { margin-top: 30px; text-shadow: 0 0 10px rgba(128,195,66,0.8); }
+        p { font-size: 1.1em; }
         
-        /* 盤面のサイズを駅サイズ(60px)×個数にピッタリ合わせる */
         #board {
+            /* 盤面サイズを駅サイズ(60px)×個数にピッタリ合わせる */
             width: 600px;
             height: 420px;
             position: relative;
@@ -24,6 +26,7 @@
             background: rgba(255, 255, 255, 0.05);
             border: 2px solid rgba(128, 195, 66, 0.3);
             border-radius: 15px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
         }
 
         .station {
@@ -38,8 +41,9 @@
             color: #333;
             border-radius: 8px;
             font-weight: bold;
-            box-sizing: border-box;
+            box-sizing: border-box; /* 枠線を含めたサイズ計算 */
             border: 1px solid #ccc;
+            transition: all 0.3s ease;
             z-index: 10;
         }
 
@@ -58,17 +62,24 @@
         .rail-left { top: 30px; left: 27px; width: 6px; height: 360px; background: repeating-linear-gradient(0deg, #333 0 10px, #eee 10px 15px); }
         .rail-right { top: 30px; left: 567px; width: 6px; height: 360px; background: repeating-linear-gradient(0deg, #333 0 10px, #eee 10px 15px); }
 
+        /* 電車コマの配置を微調整 */
         #marker {
             position: absolute;
-            width: 40px;
-            height: 40px;
+            width: 44px; /* 少し大きく */
+            height: 44px;
             transition: all 0.6s ease-in-out;
             z-index: 100;
             display: flex;
             justify-content: center;
             align-items: center;
         }
-        #trainImg { width: 40px; height: 40px; object-fit: contain; }
+        #trainImg {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* 画像全体を表示 */
+            /* 必要ならここで初期の向きを調整 */
+            /* transform: rotate(90deg); */ /* 例：90度回転させる */
+        }
 
         #dice-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
         #diceImg { width: 100px; height: 100px; display: block; margin: 0 auto 20px; border-radius: 10px; }
@@ -80,7 +91,11 @@
             border-radius: 25px;
             cursor: pointer;
             font-weight: bold;
+            font-size: 1.1em;
+            box-shadow: 0 4px #5a8a2e;
         }
+        #diceBtn:active { transform: translateY(2px); box-shadow: 0 2px #5a8a2e; }
+        #diceBtn:disabled { background: #666; cursor: not-allowed; box-shadow: none; }
 
         .star-container { position: fixed; width: 100%; height: 100%; top:0; left:0; z-index: -1; }
         .star { position: absolute; border-radius: 50%; background: white; animation: twinkle 3s infinite; }
@@ -92,7 +107,7 @@
     <h1>山手線すごろく</h1>
     <p>現在の駅：<span id="currentStation">新宿</span></p>
 
-    <div id="board" id="gameBoard">
+    <div id="board">
         <div id="dice-container">
             <img id="diceImg" src="dice1.png" alt="🎲">
             <button id="diceBtn">サイコロを振る</button>
@@ -104,11 +119,13 @@
         <div class="rail rail-right"></div>
 
         <div id="marker">
-            <img id="trainImg" src="train-right.png" alt="🚃">
+            <img id="trainImg" src="train.png" alt="🚃">
         </div>
     </div>
 
     <script>
+        /* --- JavaScriptエリア --- */
+        // リストの最初を「新宿」にして、時計回りに並べ替え
         const stations = [
             "新宿", "新大久保", "高田馬場", "目白", "池袋", "大塚", "巣鴨", "駒込", "田端", "西日暮里",
             "日暮里", "鶯谷", "上野", "御徒町", "秋葉原", "神田", "東京", "有楽町", "新橋", "浜松町",
@@ -116,9 +133,9 @@
         ];
 
         const board = document.getElementById("board");
-        let position = 0;
+        let position = 0; // 新宿からスタート
 
-        // ★ 配置計算を修正（1マス60pxでピッタリ計算）
+        // 駅の配置（バグ修正済み配置ロジック）
         stations.forEach((name, i) => {
             const div = document.createElement("div");
             div.className = "station";
@@ -146,7 +163,6 @@
 
         function moveMarker() {
             const marker = document.getElementById("marker");
-            const trainImg = document.getElementById("trainImg");
             const stationDivs = document.querySelectorAll(".station");
             const target = stationDivs[position];
             
@@ -154,14 +170,12 @@
             stationDivs.forEach(d => d.classList.remove("current-station"));
             target.classList.add("current-station");
 
-            marker.style.left = (parseInt(target.style.left) + 10) + "px";
-            marker.style.top = (parseInt(target.style.top) + 10) + "px";
+            // 電車の位置合わせ（マスの真ん中に）
+            marker.style.left = (parseInt(target.style.left) + 8) + "px";
+            marker.style.top = (parseInt(target.style.top) + 8) + "px";
 
-            // 電車の向き（修正版）
-            if (position < 9) trainImg.src = "train-left.png";
-            else if (position < 15) trainImg.src = "train-down.png";
-            else if (position < 24) trainImg.src = "train-right.png";
-            else trainImg.src = "train-up.png";
+            // ★ 電車の向き画像（src）を切り替える処理を全部消しました
+            // これで常に同じ train.png が表示されます
         }
 
         const diceBtn = document.getElementById("diceBtn");
@@ -171,7 +185,8 @@
             diceBtn.disabled = true;
             let count = 0;
             const roll = setInterval(() => {
-                diceImg.src = `dice${Math.floor(Math.random() * 6) + 1}.png`;
+                const temp = Math.floor(Math.random() * 6) + 1;
+                diceImg.src = `dice${temp}.png`;
                 count++;
                 if (count > 12) {
                     clearInterval(roll);
@@ -186,6 +201,7 @@
             }, 80);
         });
 
+        // 星作り
         for (let i = 0; i < 80; i++) {
             const star = document.createElement("div");
             star.className = "star";
@@ -194,6 +210,8 @@
             star.style.top = Math.random() * 100 + "vh";
             document.getElementById("starContainer").appendChild(star);
         }
+
+        // 初期位置（新宿）にコマを配置
         moveMarker();
     </script>
 </body>
