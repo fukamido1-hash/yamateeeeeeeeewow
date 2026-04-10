@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>山手線すごろく</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="star-container"></div>
+  <h1>山手線すごろく</h1>
+
+  <p>現在の駅：<span id="currentStation">東京</span></p>
+
+  <!-- すごろく盤 -->
+  <div id="board">
+
+    <!-- ★ サイコロとボタンはここだけ！ ★ -->
+    <img id="diceImg" src="dice1.png">
+    <button id="diceBtn">サイコロを振る</button>
+
+    <!-- 内側の線路 -->
+    <div class="rail-top"></div>
+    <div class="rail-bottom"></div>
+    <div class="rail-left"></div>
+    <div class="rail-right"></div>
+
+    <!-- マーカー -->
+    <div id="marker">
+      <img id="trainImg" src="train-right.png">
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
