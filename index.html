@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>山手線すごろく</title>
+    <style>
+        /* --- CSSエリア --- */
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            overflow-x: hidden;
+            background: linear-gradient(135deg, #1e1f29, #2e3250);
+            color: #fff;
+        }
+        h1 { margin-top: 30px; text-shadow: 0 0 10px rgba(128,195,66,0.8); }
+        #message { color: #ffd86b; height: 1.5em; font-weight: bold; margin: 10px 0; }
+        
+        #board {
+            width: 600px;
+            height: 420px;
+            position: relative;
+            margin: 20px auto;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(128, 195, 66, 0.3);
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+
+        .station {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            color: #333;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .current-station {
+            background: #80C342 !important;
+            color: white !important;
+            transform: scale(1.1);
+            box-shadow: 0 0 20px #80C342;
+            z-index: 11;
+        }
+
+        /* 線路 */
+        .rail { position: absolute; background: repeating-linear-gradient(90deg, #333 0 10px, #eee 10px 15px); z-index: 1; }
+        .rail-top { top: 27px; left: 30px; width: 540px; height: 6px; }
+        .rail-bottom { top: 387px; left: 30px; width: 540px; height: 6px; }
+        .rail-left { top: 30px; left: 27px; width: 6px; height: 360px; background: repeating-linear-gradient(0deg, #333 0 10px, #eee 10px 15px); }
+        .rail-right { top: 30px; left: 567px; width: 6px; height: 360px; background: repeating-linear-gradient(0deg, #333 0 10px, #eee 10px 15px); }
+
+        #marker {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #trainImg { width: 40px; height: 40px; object-fit: contain; }
+
+        #dice-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        #diceImg { width: 100px; height: 100px; display: block; margin: 0 auto 20px; }
+        #diceBtn {
+            padding: 12px 24px;
+            background: #80C342;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #diceBtn:disabled { background: #666; cursor: not-allowed; }
+
+        .star-container { position: fixed; width: 100%; height: 100%; top:0; left:0; z-index: -1; }
+        .star { position: absolute; border-radius: 50%; background: white; animation: twinkle 3s infinite; }
+        @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div class="star-container" id="starContainer"></div>
+    <h1>山手線すごろく</h1>
+    <p>現在の駅：<span id="currentStation">東京</span></p>
+    <div id="message"></div>
+
+    <div id="board">
+        <div id="dice-container">
+            <img id="diceImg" src="dice1.png" alt="🎲">
+            <button id="diceBtn">サイコロを振る</button>
+        </div>
+
+        <div class="rail rail-top"></div>
+        <div class="rail rail-bottom"></div>
+        <div class="rail rail-left"></div>
+        <div class="rail rail-right"></div>
+
+        <div id="marker">
+            <img id="trainImg" src="train-right.png" alt="🚃">
+        </div>
+    </div>
+
+    <script>
+        /* --- JavaScriptエリア --- */
+        const stations = [
+            "東京", "有楽町", "新橋", "浜松町", "田町", "高輪GW", "品川", "大崎", "五反田", "目黒",
+            "恵比寿", "渋谷", "原宿", "代々木", "新宿", "新大久保", "高田馬場", "目白", "池袋", "大塚",
+            "巣鴨", "駒込", "田端", "西日暮里", "日暮里", "鶯谷", "上野", "御徒町", "秋葉原", "神田"
+        ];
+
+        const board = document.getElementById("board");
+        let position = 0;
+
+        // 駅の配置
+        stations.forEach((name, i) => {
+            const div = document.createElement("div");
+            div.className = "station";
+            div.textContent = name;
+            let r, c;
+            if (i < 10) { r = 0; c = i; }
+            else if (i < 15) { r = i - 9; c = 9; }
+            else if (i < 25) { r = 6; c = 9 - (i - 14); }
+            else { r = 6 - (i - 24); c = 0; }
+            div.style.left = (c * 60) + "px";
+            div.style.top = (r * 60) + "px";
+            board.appendChild(div);
+        });
+
+        function moveMarker() {
+            const marker = document.getElementById("marker");
+            const trainImg = document.getElementById("trainImg");
+            const stationDivs = document.querySelectorAll(".station");
+            const target = stationDivs[position];
+            
+            document.getElementById("currentStation").textContent = stations[position];
+            stationDivs.forEach(d => d.classList.remove("current-station"));
+            target.classList.add("current-station");
+
+            marker.style.left = (parseInt(target.style.left) + 10) + "px";
+            marker.style.top = (parseInt(target.style.top) + 10) + "px";
+
+            // 向きに合わせて画像を変える（ファイル名に合わせてね）
+            if (position < 10) trainImg.src = "train-right.png";
+            else if (position < 15) trainImg.src = "train-down.png";
+            else if (position < 25) trainImg.src = "train-left.png";
+            else trainImg.src = "train-up.png";
+        }
+
+        const diceBtn = document.getElementById("diceBtn");
+        const diceImg = document.getElementById("diceImg");
+
+        diceBtn.addEventListener("click", () => {
+            diceBtn.disabled = true;
+            let count = 0;
+            const roll = setInterval(() => {
+                const temp = Math.floor(Math.random() * 6) + 1;
+                diceImg.src = `dice${temp}.png`;
+                count++;
+                if (count > 15) {
+                    clearInterval(roll);
+                    const dice = Math.floor(Math.random() * 6) + 1;
+                    diceImg.src = `dice${dice}.png`;
+                    position = (position + dice) % 30;
+                    setTimeout(() => {
+                        moveMarker();
+                        diceBtn.disabled = false;
+                    }, 400);
+                }
+            }, 100);
+        });
+
+        // 星作り
+        for (let i = 0; i < 80; i++) {
+            const star = document.createElement("div");
+            star.className = "star";
+            star.style.width = star.style.height = Math.random() * 3 + "px";
+            star.style.left = Math.random() * 100 + "vw";
+            star.style.top = Math.random() * 100 + "vh";
+            star.style.animationDelay = Math.random() * 2 + "s";
+            document.getElementById("starContainer").appendChild(star);
+        }
+
+        moveMarker();
+    </script>
+</body>
+</html>
