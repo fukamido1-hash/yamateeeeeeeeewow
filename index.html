@@ -2,27 +2,36 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>山手線すごろく | 電車1枚版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>山手線すごろく | スマホ対応版</title>
     <style>
-        /* --- CSSエリア --- */
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
             text-align: center;
             margin: 0;
+            padding: 10px;
             overflow-x: hidden;
             background: linear-gradient(135deg, #1e1f29, #2e3250);
             color: #fff;
+            -webkit-tap-highlight-color: transparent;
         }
-        h1 { margin-top: 30px; text-shadow: 0 0 10px rgba(128,195,66,0.8); }
-        p { font-size: 1.1em; }
+
+        h1 { margin: 15px 0; font-size: 1.5rem; text-shadow: 0 0 10px rgba(128,195,66,0.8); }
+        p { font-size: 1rem; margin-bottom: 10px; }
         
-        #board {
-            /* 盤面サイズを駅サイズ(60px)×個数にピッタリ合わせる */
-            width: 600px;
-            height: 420px;
+        /* 盤面を画面幅に合わせて伸縮させる */
+        #board-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            aspect-ratio: 600 / 420; /* 黄金比率を維持 */
             position: relative;
-            margin: 20px auto;
+        }
+
+        #board {
+            width: 100%;
+            height: 100%;
+            position: relative;
             background: rgba(255, 255, 255, 0.05);
             border: 2px solid rgba(128, 195, 66, 0.3);
             border-radius: 15px;
@@ -31,19 +40,18 @@
 
         .station {
             position: absolute;
-            width: 60px;
-            height: 60px;
-            font-size: 11px;
+            width: 10%; /* 10列なので10% */
+            height: 14.28%; /* 7行なので100/7 */
+            font-size: clamp(7px, 2vw, 11px); /* 文字サイズを自動調整 */
             display: flex;
             align-items: center;
             justify-content: center;
             background: #fff;
             color: #333;
-            border-radius: 8px;
+            border-radius: 4px;
             font-weight: bold;
-            box-sizing: border-box; /* 枠線を含めたサイズ計算 */
+            box-sizing: border-box;
             border: 1px solid #ccc;
-            transition: all 0.3s ease;
             z-index: 10;
         }
 
@@ -51,51 +59,48 @@
             background: #80C342 !important;
             color: white !important;
             transform: scale(1.1);
-            box-shadow: 0 0 20px #80C342;
+            box-shadow: 0 0 15px #80C342;
             z-index: 11;
         }
 
-        /* 線路を駅の真ん中を通るように配置 */
+        /* 線路も%指定でズレ防止 */
         .rail { position: absolute; background: repeating-linear-gradient(90deg, #333 0 10px, #eee 10px 15px); z-index: 1; }
-        .rail-top { top: 27px; left: 30px; width: 540px; height: 6px; }
-        .rail-bottom { top: 387px; left: 30px; width: 540px; height: 6px; }
-        .rail-left { top: 30px; left: 27px; width: 6px; height: 360px; background: repeating-linear-gradient(0deg, #333 0 10px, #eee 10px 15px); }
-        .rail-right { top: 30px; left: 567px; width: 6px; height: 360px; background: repeating-linear-gradient(0deg, #333 0 10px, #eee 10px 15px); }
+        .rail-top { top: 6.5%; left: 5%; width: 90%; height: 4px; }
+        .rail-bottom { bottom: 6.5%; left: 5%; width: 90%; height: 4px; }
+        .rail-left { top: 5%; left: 4.5%; width: 4px; height: 90%; background: repeating-linear-gradient(0deg, #333 0 10px, #eee 10px 15px); }
+        .rail-right { top: 5%; right: 4.5%; width: 4px; height: 90%; background: repeating-linear-gradient(0deg, #333 0 10px, #eee 10px 15px); }
 
-        /* 電車コマの配置を微調整 */
         #marker {
             position: absolute;
-            width: 44px; /* 少し大きく */
-            height: 44px;
+            width: 8%;
+            height: 12%;
             transition: all 0.6s ease-in-out;
             z-index: 100;
             display: flex;
             justify-content: center;
             align-items: center;
         }
-        #trainImg {
-            width: 100%;
-            height: 100%;
-            object-fit: contain; /* 画像全体を表示 */
-            /* 必要ならここで初期の向きを調整 */
-            /* transform: rotate(90deg); */ /* 例：90度回転させる */
-        }
+        #trainImg { width: 100%; height: 100%; object-fit: contain; }
 
-        #dice-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
-        #diceImg { width: 100px; height: 100px; display: block; margin: 0 auto 20px; border-radius: 10px; }
+        #dice-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #diceImg { width: 60px; height: 60px; display: block; margin: 0 auto 10px; border-radius: 8px; }
         #diceBtn {
-            padding: 12px 24px;
+            padding: 10px 20px;
             background: #80C342;
             color: white;
             border: none;
-            border-radius: 25px;
+            border-radius: 20px;
             cursor: pointer;
             font-weight: bold;
-            font-size: 1.1em;
-            box-shadow: 0 4px #5a8a2e;
+            box-shadow: 0 3px #5a8a2e;
         }
-        #diceBtn:active { transform: translateY(2px); box-shadow: 0 2px #5a8a2e; }
-        #diceBtn:disabled { background: #666; cursor: not-allowed; box-shadow: none; }
+        #diceBtn:active { transform: translateY(1px); box-shadow: 0 1px #5a8a2e; }
+        #diceBtn:disabled { background: #666; box-shadow: none; }
 
         .star-container { position: fixed; width: 100%; height: 100%; top:0; left:0; z-index: -1; }
         .star { position: absolute; border-radius: 50%; background: white; animation: twinkle 3s infinite; }
@@ -107,25 +112,21 @@
     <h1>山手線すごろく</h1>
     <p>現在の駅：<span id="currentStation">新宿</span></p>
 
-    <div id="board">
-        <div id="dice-container">
-            <img id="diceImg" src="dice1.png" alt="🎲">
-            <button id="diceBtn">サイコロを振る</button>
-        </div>
-
-        <div class="rail rail-top"></div>
-        <div class="rail rail-bottom"></div>
-        <div class="rail rail-left"></div>
-        <div class="rail rail-right"></div>
-
-        <div id="marker">
-            <img id="trainImg" src="train.png" alt="🚃">
+    <div id="board-container">
+        <div id="board">
+            <div id="dice-container">
+                <img id="diceImg" src="dice1.png" alt="🎲">
+                <button id="diceBtn">サイコロを振る</button>
+            </div>
+            <div class="rail rail-top"></div>
+            <div class="rail rail-bottom"></div>
+            <div class="rail rail-left"></div>
+            <div class="rail rail-right"></div>
+            <div id="marker"><img id="trainImg" src="train.png" alt="🚃"></div>
         </div>
     </div>
 
     <script>
-        /* --- JavaScriptエリア --- */
-        // リストの最初を「新宿」にして、時計回りに並べ替え
         const stations = [
             "新宿", "新大久保", "高田馬場", "目白", "池袋", "大塚", "巣鴨", "駒込", "田端", "西日暮里",
             "日暮里", "鶯谷", "上野", "御徒町", "秋葉原", "神田", "東京", "有楽町", "新橋", "浜松町",
@@ -133,31 +134,22 @@
         ];
 
         const board = document.getElementById("board");
-        let position = 0; // 新宿からスタート
+        let position = 0;
 
-        // 駅の配置（バグ修正済み配置ロジック）
+        // 駅を%で配置（スマホ対応の肝！）
         stations.forEach((name, i) => {
             const div = document.createElement("div");
             div.className = "station";
             div.textContent = name;
             let left = 0, top = 0;
 
-            if (i <= 9) { // 上辺 (新宿〜西日暮里)
-                left = i * 60;
-                top = 0;
-            } else if (i <= 15) { // 右辺 (日暮里〜神田)
-                left = 540;
-                top = (i - 9) * 60;
-            } else if (i <= 24) { // 下辺 (東京〜五反田)
-                left = 540 - (i - 15) * 60;
-                top = 360;
-            } else { // 左辺 (目黒〜代々木)
-                left = 0;
-                top = 360 - (i - 24) * 60;
-            }
+            if (i <= 9) { left = i * 10; top = 0; }
+            else if (i <= 15) { left = 90; top = (i - 9) * 14.28; }
+            else if (i <= 24) { left = 90 - (i - 15) * 10; top = 85.7; }
+            else { left = 0; top = 85.7 - (i - 24) * 14.28; }
 
-            div.style.left = left + "px";
-            div.style.top = top + "px";
+            div.style.left = left + "%";
+            div.style.top = top + "%";
             board.appendChild(div);
         });
 
@@ -170,12 +162,9 @@
             stationDivs.forEach(d => d.classList.remove("current-station"));
             target.classList.add("current-station");
 
-            // 電車の位置合わせ（マスの真ん中に）
-            marker.style.left = (parseInt(target.style.left) + 8) + "px";
-            marker.style.top = (parseInt(target.style.top) + 8) + "px";
-
-            // ★ 電車の向き画像（src）を切り替える処理を全部消しました
-            // これで常に同じ train.png が表示されます
+            // 電車をマスの中心に寄せる（微調整）
+            marker.style.left = (parseFloat(target.style.left) + 1) + "%";
+            marker.style.top = (parseFloat(target.style.top) + 1) + "%";
         }
 
         const diceBtn = document.getElementById("diceBtn");
@@ -185,14 +174,22 @@
             diceBtn.disabled = true;
             let count = 0;
             const roll = setInterval(() => {
-                const temp = Math.floor(Math.random() * 6) + 1;
-                diceImg.src = `dice${temp}.png`;
+                diceImg.src = `dice${Math.floor(Math.random() * 6) + 1}.png`;
                 count++;
                 if (count > 12) {
                     clearInterval(roll);
                     const dice = Math.floor(Math.random() * 6) + 1;
                     diceImg.src = `dice${dice}.png`;
-                    position = (position + dice) % 30;
+
+                    // 上野ストップロジック
+                    const uenoIndex = 12;
+                    const nextPosition = position + dice;
+                    if (position < uenoIndex && nextPosition >= uenoIndex) {
+                        position = uenoIndex;
+                    } else {
+                        position = nextPosition % 30;
+                    }
+
                     setTimeout(() => {
                         moveMarker();
                         diceBtn.disabled = false;
@@ -201,8 +198,7 @@
             }, 80);
         });
 
-        // 星作り
-        for (let i = 0; i < 80; i++) {
+        for (let i = 0; i < 40; i++) {
             const star = document.createElement("div");
             star.className = "star";
             star.style.width = star.style.height = Math.random() * 2 + "px";
@@ -210,8 +206,6 @@
             star.style.top = Math.random() * 100 + "vh";
             document.getElementById("starContainer").appendChild(star);
         }
-
-        // 初期位置（新宿）にコマを配置
         moveMarker();
     </script>
 </body>
