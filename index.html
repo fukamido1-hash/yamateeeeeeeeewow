@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>山手線すごろく | 進化版</title>
+    <title>山手線すごろく | 完成版</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         body {
@@ -16,10 +16,7 @@
             color: #fff;
             -webkit-tap-highlight-color: transparent;
         }
-
         h1 { margin: 10px 0; font-size: 1.3rem; text-shadow: 0 0 10px rgba(128,195,66,0.8); }
-        
-        /* 設定エリアのスタイル */
         #settings {
             margin-bottom: 10px;
             background: rgba(255,255,255,0.1);
@@ -34,7 +31,6 @@
             background: #fff;
             color: #333;
         }
-
         #board-container {
             width: 100%;
             max-width: 600px;
@@ -42,7 +38,6 @@
             aspect-ratio: 600 / 420;
             position: relative;
         }
-
         #board {
             width: 100%;
             height: 100%;
@@ -52,7 +47,6 @@
             border-radius: 15px;
             box-shadow: 0 0 30px rgba(0,0,0,0.5);
         }
-
         .station {
             position: absolute;
             width: 10%;
@@ -69,7 +63,6 @@
             border: 1px solid #ccc;
             z-index: 10;
         }
-
         .current-station {
             background: #80C342 !important;
             color: white !important;
@@ -77,13 +70,11 @@
             box-shadow: 0 0 15px #80C342;
             z-index: 11;
         }
-
         .rail { position: absolute; background: repeating-linear-gradient(90deg, #333 0 10px, #eee 10px 15px); z-index: 1; }
         .rail-top { top: 6.5%; left: 5%; width: 90%; height: 4px; }
         .rail-bottom { bottom: 6.5%; left: 5%; width: 90%; height: 4px; }
         .rail-left { top: 5%; left: 4.5%; width: 4px; height: 90%; background: repeating-linear-gradient(0deg, #333 0 10px, #eee 10px 15px); }
         .rail-right { top: 5%; right: 4.5%; width: 4px; height: 90%; background: repeating-linear-gradient(0deg, #333 0 10px, #eee 10px 15px); }
-
         #marker {
             position: absolute;
             width: 8%;
@@ -95,7 +86,6 @@
             align-items: center;
         }
         #trainImg { width: 100%; height: 100%; object-fit: contain; }
-
         #dice-container {
             position: absolute;
             top: 50%;
@@ -113,9 +103,7 @@
             font-weight: bold;
             box-shadow: 0 3px #5a8a2e;
         }
-        #diceBtn:active { transform: translateY(1px); box-shadow: 0 1px #5a8a2e; }
         #diceBtn:disabled { background: #666; box-shadow: none; }
-
         .star-container { position: fixed; width: 100%; height: 100%; top:0; left:0; z-index: -1; }
         .star { position: absolute; border-radius: 50%; background: white; animation: twinkle 3s infinite; }
         @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
@@ -126,7 +114,7 @@
     <h1>山手線すごろく</h1>
 
     <div id="settings">
-        開始駅：
+        始発駅を設定：
         <select id="startStationSelect"></select>
         <p style="margin: 5px 0 0 0;">現在の駅：<span id="currentStation">新宿</span></p>
     </div>
@@ -155,12 +143,12 @@
         const board = document.getElementById("board");
         const select = document.getElementById("startStationSelect");
         
-        // 改善点：セーブデータ（LocalStorage）の読み込み
+        // セーブデータの読み込み
         let position = parseInt(localStorage.getItem("yamanote_pos")) || 0;
+        let startPosition = parseInt(localStorage.getItem("yamanote_start")) || 0;
 
-        // 駅の配置 & セレクトボックスの生成
+        // 駅の配置 & セレクトボックス生成
         stations.forEach((name, i) => {
-            // 駅を作成
             const div = document.createElement("div");
             div.className = "station";
             div.textContent = name;
@@ -173,44 +161,31 @@
             div.style.top = top + "%";
             board.appendChild(div);
 
-            // セレクトボックスの選択肢を追加
             const opt = document.createElement("option");
             opt.value = i;
             opt.textContent = name;
-            if (i === position) opt.selected = true;
+            if (i === startPosition) opt.selected = true;
             select.appendChild(opt);
         });
 
-        // 改善点：スタート地点の自由化（変更イベント）
+        // 始発駅を変えた時の処理
         select.addEventListener("change", (e) => {
-            position = parseInt(e.target.value);
+            startPosition = parseInt(e.target.value);
+            position = startPosition; // 始発を変えたら駒もそこに飛ばす
+            localStorage.setItem("yamanote_start", startPosition);
             saveAndMove();
         });
 
         function saveAndMove() {
-            // 改善点：位置の保存
             localStorage.setItem("yamanote_pos", position);
-            
             const marker = document.getElementById("marker");
             const stationDivs = document.querySelectorAll(".station");
             const target = stationDivs[position];
-            
             document.getElementById("currentStation").textContent = stations[position];
             stationDivs.forEach(d => d.classList.remove("current-station"));
             target.classList.add("current-station");
-
             marker.style.left = (parseFloat(target.style.left) + 1) + "%";
             marker.style.top = (parseFloat(target.style.top) + 1) + "%";
-        }
-
-        // 改善点：クラッカーを鳴らす関数
-        function fireConfetti() {
-            confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: { y: 0.6 },
-                colors: ['#80C342', '#ffffff', '#ffeb3b']
-            });
         }
 
         const diceBtn = document.getElementById("diceBtn");
@@ -227,34 +202,37 @@
                     const dice = Math.floor(Math.random() * 6) + 1;
                     diceImg.src = `dice${dice}.png`;
 
-                    const uenoIndex = 12;
-                    const oldPosition = position;
-                    const nextPosition = position + dice;
+                    const oldPos = position;
+                    // 移動（上野ロジックなし）
+                    position = (position + dice) % 30;
 
-                    // 上野ストップロジック
-                    if (position < uenoIndex && nextPosition >= uenoIndex) {
-                        position = uenoIndex;
-                    } else {
-                        position = nextPosition % 30;
+                    // クラッカー判定：始発駅を通過したか
+                    let passedStart = false;
+                    for (let i = 1; i <= dice; i++) {
+                        if ((oldPos + i) % 30 === startPosition) {
+                            passedStart = true;
+                            break;
+                        }
                     }
 
-                    // 改善点：スタート地点（インデックス0付近）を越えたらクラッカー
-                    // 前のポジションより数字が小さくなったら「一周した」と判定
-                    if (position < oldPosition && position !== uenoIndex) {
-                        fireConfetti();
+                    if (passedStart) {
+                        confetti({
+                            particleCount: 150,
+                            spread: 70,
+                            origin: { y: 0.6 },
+                            colors: ['#80C342', '#ffffff', '#ffeb3b']
+                        });
                     }
 
                     setTimeout(() => {
                         saveAndMove();
-                        // セレクトボックスの表示も更新しておく
-                        select.value = position;
                         diceBtn.disabled = false;
                     }, 300);
                 }
             }, 80);
         });
 
-        // 星空背景
+        // 背景の星
         for (let i = 0; i < 40; i++) {
             const star = document.createElement("div");
             star.className = "star";
@@ -264,7 +242,6 @@
             document.getElementById("starContainer").appendChild(star);
         }
 
-        // 初期表示
         saveAndMove();
     </script>
 </body>
