@@ -143,9 +143,9 @@
         const board = document.getElementById("board");
         const select = document.getElementById("startStationSelect");
         
-        // セーブデータの読み込み
         let position = parseInt(localStorage.getItem("yamanote_pos")) || 0;
         let startPosition = parseInt(localStorage.getItem("yamanote_start")) || 0;
+        let isMoving = false; // ★移動中かどうかを管理するフラグ
 
         // 駅の配置 & セレクトボックス生成
         stations.forEach((name, i) => {
@@ -170,20 +170,68 @@
 
         // 始発駅を変えた時の処理
         select.addEventListener("change", (e) => {
+            if (isMoving) return;
             startPosition = parseInt(e.target.value);
-            position = startPosition; // 始発を変えたら駒もそこに飛ばす
+            position = startPosition;
             localStorage.setItem("yamanote_start", startPosition);
             saveAndMove();
         });
+
+        // ★新機能：一駅ずつトコトコ動く魔法
+        async function moveOneByOne(steps) {
+            isMoving = true;
+            diceBtn.disabled = true;
+            
+            const totalStations = stations.length;
+            // 出発駅までの残りマスを計算
+            let remaining = (startPosition - position + totalStations) % totalStations;
+            if (remaining === 0) remaining = totalStations; 
+
+            let actualStepsTaken = 0;
+
+            for (let i = 0; i < steps; i++) {
+                // 出発駅（ゴール）に到達したらストップ
+                if (actualStepsTaken > 0 && position === startPosition) break;
+                
+                position = (position + 1) % totalStations;
+                actualStepsTaken++;
+                
+                saveAndMove(); // 1マスごとに更新
+                // 0.4秒待機（ここを長くするともっとゆっくり動くよ）
+                await new Promise(resolve => setTimeout(resolve, 400));
+            }
+
+            // --- ゴール演出判定 ---
+            if (position === startPosition) {
+                if (actualStepsTaken === steps) {
+                    // 【ぴったり賞】金色の豪華クラッカー！
+                    var duration = 4 * 1000;
+                    var end = Date.now() + duration;
+                    (function frame() {
+                      confetti({ particleCount: 10, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#80C342', '#FFD700', '#ffffff'] });
+                      confetti({ particleCount: 10, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#80C342', '#FFD700', '#ffffff'] });
+                      if (Date.now() < end) { requestAnimationFrame(frame); }
+                    }());
+                } else {
+                    // 【通常ゴール】普通のクラッカー
+                    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#80C342', '#ffffff'] });
+                }
+            }
+
+            isMoving = false;
+            diceBtn.disabled = false;
+        }
 
         function saveAndMove() {
             localStorage.setItem("yamanote_pos", position);
             const marker = document.getElementById("marker");
             const stationDivs = document.querySelectorAll(".station");
             const target = stationDivs[position];
+            
             document.getElementById("currentStation").textContent = stations[position];
             stationDivs.forEach(d => d.classList.remove("current-station"));
             target.classList.add("current-station");
+            
             marker.style.left = (parseFloat(target.style.left) + 1) + "%";
             marker.style.top = (parseFloat(target.style.top) + 1) + "%";
         }
@@ -192,6 +240,7 @@
         const diceImg = document.getElementById("diceImg");
 
         diceBtn.addEventListener("click", () => {
+            if (isMoving) return;
             diceBtn.disabled = true;
             let count = 0;
             const roll = setInterval(() => {
@@ -202,32 +251,8 @@
                     const dice = Math.floor(Math.random() * 6) + 1;
                     diceImg.src = `dice${dice}.png`;
 
-                    const oldPos = position;
-                    // 移動（上野ロジックなし）
-                    position = (position + dice) % 30;
-
-                    // クラッカー判定：始発駅を通過したか
-                    let passedStart = false;
-                    for (let i = 1; i <= dice; i++) {
-                        if ((oldPos + i) % 30 === startPosition) {
-                            passedStart = true;
-                            break;
-                        }
-                    }
-
-                    if (passedStart) {
-                        confetti({
-                            particleCount: 150,
-                            spread: 70,
-                            origin: { y: 0.6 },
-                            colors: ['#80C342', '#ffffff', '#ffeb3b']
-                        });
-                    }
-
-                    setTimeout(() => {
-                        saveAndMove();
-                        diceBtn.disabled = false;
-                    }, 300);
+                    // ★「ワープ」から「トコトコ移動」へバトンタッチ
+                    moveOneByOne(dice);
                 }
             }, 80);
         });
