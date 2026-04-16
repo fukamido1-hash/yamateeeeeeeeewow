@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>山手線すごろく | スマホ対応版</title>
+    <title>山手線すごろく | 進化版</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -16,15 +17,29 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        h1 { margin: 15px 0; font-size: 1.5rem; text-shadow: 0 0 10px rgba(128,195,66,0.8); }
-        p { font-size: 1rem; margin-bottom: 10px; }
+        h1 { margin: 10px 0; font-size: 1.3rem; text-shadow: 0 0 10px rgba(128,195,66,0.8); }
         
-        /* 盤面を画面幅に合わせて伸縮させる */
+        /* 設定エリアのスタイル */
+        #settings {
+            margin-bottom: 10px;
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+        }
+        select {
+            padding: 5px;
+            border-radius: 5px;
+            border: none;
+            background: #fff;
+            color: #333;
+        }
+
         #board-container {
             width: 100%;
             max-width: 600px;
             margin: 0 auto;
-            aspect-ratio: 600 / 420; /* 黄金比率を維持 */
+            aspect-ratio: 600 / 420;
             position: relative;
         }
 
@@ -40,9 +55,9 @@
 
         .station {
             position: absolute;
-            width: 10%; /* 10列なので10% */
-            height: 14.28%; /* 7行なので100/7 */
-            font-size: clamp(7px, 2vw, 11px); /* 文字サイズを自動調整 */
+            width: 10%;
+            height: 14.28%;
+            font-size: clamp(7px, 2vw, 11px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -63,7 +78,6 @@
             z-index: 11;
         }
 
-        /* 線路も%指定でズレ防止 */
         .rail { position: absolute; background: repeating-linear-gradient(90deg, #333 0 10px, #eee 10px 15px); z-index: 1; }
         .rail-top { top: 6.5%; left: 5%; width: 90%; height: 4px; }
         .rail-bottom { bottom: 6.5%; left: 5%; width: 90%; height: 4px; }
@@ -74,7 +88,7 @@
             position: absolute;
             width: 8%;
             height: 12%;
-            transition: all 0.6s ease-in-out;
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
             z-index: 100;
             display: flex;
             justify-content: center;
@@ -110,7 +124,12 @@
 <body>
     <div class="star-container" id="starContainer"></div>
     <h1>山手線すごろく</h1>
-    <p>現在の駅：<span id="currentStation">新宿</span></p>
+
+    <div id="settings">
+        開始駅：
+        <select id="startStationSelect"></select>
+        <p style="margin: 5px 0 0 0;">現在の駅：<span id="currentStation">新宿</span></p>
+    </div>
 
     <div id="board-container">
         <div id="board">
@@ -134,26 +153,44 @@
         ];
 
         const board = document.getElementById("board");
-        let position = 0;
+        const select = document.getElementById("startStationSelect");
+        
+        // 改善点：セーブデータ（LocalStorage）の読み込み
+        let position = parseInt(localStorage.getItem("yamanote_pos")) || 0;
 
-        // 駅を%で配置（スマホ対応の肝！）
+        // 駅の配置 & セレクトボックスの生成
         stations.forEach((name, i) => {
+            // 駅を作成
             const div = document.createElement("div");
             div.className = "station";
             div.textContent = name;
             let left = 0, top = 0;
-
             if (i <= 9) { left = i * 10; top = 0; }
             else if (i <= 15) { left = 90; top = (i - 9) * 14.28; }
             else if (i <= 24) { left = 90 - (i - 15) * 10; top = 85.7; }
             else { left = 0; top = 85.7 - (i - 24) * 14.28; }
-
             div.style.left = left + "%";
             div.style.top = top + "%";
             board.appendChild(div);
+
+            // セレクトボックスの選択肢を追加
+            const opt = document.createElement("option");
+            opt.value = i;
+            opt.textContent = name;
+            if (i === position) opt.selected = true;
+            select.appendChild(opt);
         });
 
-        function moveMarker() {
+        // 改善点：スタート地点の自由化（変更イベント）
+        select.addEventListener("change", (e) => {
+            position = parseInt(e.target.value);
+            saveAndMove();
+        });
+
+        function saveAndMove() {
+            // 改善点：位置の保存
+            localStorage.setItem("yamanote_pos", position);
+            
             const marker = document.getElementById("marker");
             const stationDivs = document.querySelectorAll(".station");
             const target = stationDivs[position];
@@ -162,9 +199,18 @@
             stationDivs.forEach(d => d.classList.remove("current-station"));
             target.classList.add("current-station");
 
-            // 電車をマスの中心に寄せる（微調整）
             marker.style.left = (parseFloat(target.style.left) + 1) + "%";
             marker.style.top = (parseFloat(target.style.top) + 1) + "%";
+        }
+
+        // 改善点：クラッカーを鳴らす関数
+        function fireConfetti() {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#80C342', '#ffffff', '#ffeb3b']
+            });
         }
 
         const diceBtn = document.getElementById("diceBtn");
@@ -181,23 +227,34 @@
                     const dice = Math.floor(Math.random() * 6) + 1;
                     diceImg.src = `dice${dice}.png`;
 
-                    // 上野ストップロジック
                     const uenoIndex = 12;
+                    const oldPosition = position;
                     const nextPosition = position + dice;
+
+                    // 上野ストップロジック
                     if (position < uenoIndex && nextPosition >= uenoIndex) {
                         position = uenoIndex;
                     } else {
                         position = nextPosition % 30;
                     }
 
+                    // 改善点：スタート地点（インデックス0付近）を越えたらクラッカー
+                    // 前のポジションより数字が小さくなったら「一周した」と判定
+                    if (position < oldPosition && position !== uenoIndex) {
+                        fireConfetti();
+                    }
+
                     setTimeout(() => {
-                        moveMarker();
+                        saveAndMove();
+                        // セレクトボックスの表示も更新しておく
+                        select.value = position;
                         diceBtn.disabled = false;
                     }, 300);
                 }
             }, 80);
         });
 
+        // 星空背景
         for (let i = 0; i < 40; i++) {
             const star = document.createElement("div");
             star.className = "star";
@@ -206,7 +263,9 @@
             star.style.top = Math.random() * 100 + "vh";
             document.getElementById("starContainer").appendChild(star);
         }
-        moveMarker();
+
+        // 初期表示
+        saveAndMove();
     </script>
 </body>
 </html>
