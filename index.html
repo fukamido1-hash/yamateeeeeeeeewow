@@ -22,14 +22,16 @@
             background: rgba(255,255,255,0.1);
             padding: 10px;
             border-radius: 10px;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
+        .setting-item { margin: 5px 0; }
         select {
-            padding: 5px;
+            padding: 4px 8px;
             border-radius: 5px;
             border: none;
             background: #fff;
             color: #333;
+            font-size: 0.85rem;
         }
         #board-container {
             width: 100%;
@@ -91,6 +93,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
+            z-index: 50;
         }
         #diceImg { width: 60px; height: 60px; display: block; margin: 0 auto 10px; border-radius: 8px; }
         #diceBtn {
@@ -103,7 +106,7 @@
             font-weight: bold;
             box-shadow: 0 3px #5a8a2e;
         }
-        #diceBtn:disabled { background: #666; box-shadow: none; }
+        #diceBtn:disabled { background: #666; box-shadow: none; opacity: 0.7; }
         .star-container { position: fixed; width: 100%; height: 100%; top:0; left:0; z-index: -1; }
         .star { position: absolute; border-radius: 50%; background: white; animation: twinkle 3s infinite; }
         @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
@@ -114,8 +117,13 @@
     <h1>山手線すごろく</h1>
 
     <div id="settings">
-        始発駅を設定：
-        <select id="startStationSelect"></select>
+        <div class="setting-item">
+            始発駅：<select id="startStationSelect"></select>
+            進行方向：<select id="directionSelect">
+                <option value="1">外回り (時計回り)</option>
+                <option value="-1">内回り (反時計回り)</option>
+            </select>
+        </div>
         <p style="margin: 5px 0 0 0;">現在の駅：<span id="currentStation">新宿</span></p>
     </div>
 
@@ -141,11 +149,18 @@
         ];
 
         const board = document.getElementById("board");
-        const select = document.getElementById("startStationSelect");
+        const startSelect = document.getElementById("startStationSelect");
+        const dirSelect = document.getElementById("directionSelect");
+        const diceBtn = document.getElementById("diceBtn");
+        const diceImg = document.getElementById("diceImg");
         
         let position = parseInt(localStorage.getItem("yamanote_pos")) || 0;
         let startPosition = parseInt(localStorage.getItem("yamanote_start")) || 0;
-        let isMoving = false; // ★移動中かどうかを管理するフラグ
+        let direction = parseInt(localStorage.getItem("yamanote_dir")) || 1;
+        let isMoving = false;
+
+        // 初期設定の反映
+        dirSelect.value = direction;
 
         // 駅の配置 & セレクトボックス生成
         stations.forEach((name, i) => {
@@ -165,11 +180,11 @@
             opt.value = i;
             opt.textContent = name;
             if (i === startPosition) opt.selected = true;
-            select.appendChild(opt);
+            startSelect.appendChild(opt);
         });
 
-        // 始発駅を変えた時の処理
-        select.addEventListener("change", (e) => {
+        // 設定変更のイベント
+        startSelect.addEventListener("change", (e) => {
             if (isMoving) return;
             startPosition = parseInt(e.target.value);
             position = startPosition;
@@ -177,34 +192,37 @@
             saveAndMove();
         });
 
-        // ★新機能：一駅ずつトコトコ動く魔法
+        dirSelect.addEventListener("change", (e) => {
+            direction = parseInt(e.target.value);
+            localStorage.setItem("yamanote_dir", direction);
+        });
+
         async function moveOneByOne(steps) {
             isMoving = true;
             diceBtn.disabled = true;
+            startSelect.disabled = true;
+            dirSelect.disabled = true;
             
             const totalStations = stations.length;
-            // 出発駅までの残りマスを計算
-            let remaining = (startPosition - position + totalStations) % totalStations;
-            if (remaining === 0) remaining = totalStations; 
 
             let actualStepsTaken = 0;
 
             for (let i = 0; i < steps; i++) {
-                // 出発駅（ゴール）に到達したらストップ
-                if (actualStepsTaken > 0 && position === startPosition) break;
-                
-                position = (position + 1) % totalStations;
+                // 方向(1か-1)を足して、マイナスにならないように一周分足してから余り算
+                position = (position + direction + totalStations) % totalStations;
                 actualStepsTaken++;
                 
-                saveAndMove(); // 1マスごとに更新
-                // 0.4秒待機（ここを長くするともっとゆっくり動くよ）
+                saveAndMove();
                 await new Promise(resolve => setTimeout(resolve, 400));
+
+                // 出発駅（ゴール）に到達したらその時点でストップ
+                if (position === startPosition) break;
             }
 
-            // --- ゴール演出判定 ---
+            // ゴール演出
             if (position === startPosition) {
                 if (actualStepsTaken === steps) {
-                    // 【ぴったり賞】金色の豪華クラッカー！
+                    // ぴったり賞
                     var duration = 4 * 1000;
                     var end = Date.now() + duration;
                     (function frame() {
@@ -213,13 +231,15 @@
                       if (Date.now() < end) { requestAnimationFrame(frame); }
                     }());
                 } else {
-                    // 【通常ゴール】普通のクラッカー
+                    // 通常ゴール
                     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#80C342', '#ffffff'] });
                 }
             }
 
             isMoving = false;
             diceBtn.disabled = false;
+            startSelect.disabled = false;
+            dirSelect.disabled = false;
         }
 
         function saveAndMove() {
@@ -236,9 +256,6 @@
             marker.style.top = (parseFloat(target.style.top) + 1) + "%";
         }
 
-        const diceBtn = document.getElementById("diceBtn");
-        const diceImg = document.getElementById("diceImg");
-
         diceBtn.addEventListener("click", () => {
             if (isMoving) return;
             diceBtn.disabled = true;
@@ -250,8 +267,6 @@
                     clearInterval(roll);
                     const dice = Math.floor(Math.random() * 6) + 1;
                     diceImg.src = `dice${dice}.png`;
-
-                    // ★「ワープ」から「トコトコ移動」へバトンタッチ
                     moveOneByOne(dice);
                 }
             }, 80);
